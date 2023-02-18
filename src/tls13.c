@@ -167,6 +167,50 @@ static const byte tls13ProtocolLabel[TLS13_PROTOCOL_LABEL_SZ + 1] = "tls13 ";
 static const byte dtls13ProtocolLabel[DTLS13_PROTOCOL_LABEL_SZ + 1] = "dtls13";
 #endif /* WOLFSSL_DTLS13 */
 
+// #ifdef INSTRUMENTATION
+#include<stdbool.h>
+struct TLS13state {
+  bool session_id_set;
+  bool random_set;
+  bool handshake_secret_set;
+  bool handshake_key_set;
+  bool handshake_iv_set;
+  bool master_secret_set;
+  bool application_key_set;
+  bool application_iv_set;
+  bool error_status;
+  bool terminated;
+
+  char message_received[100];
+  char message_sent[100];
+  char message_expected[100];
+};
+
+void printTLS13State(void);
+
+struct TLS13state curState = {false, false, false, false, false, false, false, false, false, false, "NULL", "NULL", "NULL"};
+int stateCounter = 0;
+
+void printTLS13State(void) {
+  fprintf(stderr, "\n---------------- State : %d ---------------------\n", stateCounter);
+  fprintf(stderr, "session_id_set : %d \n", curState.session_id_set);
+  fprintf(stderr, "random_set : %d \n", curState.random_set);
+  fprintf(stderr, "handshake_secret_set : %d \n", curState.handshake_secret_set);
+  fprintf(stderr, "handshake_key_set : %d \n", curState.handshake_key_set);
+  fprintf(stderr, "handshake_iv_set : %d \n", curState.handshake_iv_set);
+  fprintf(stderr, "master_secret_set : %d \n", curState.master_secret_set);
+  fprintf(stderr, "application_key_set : %d \n", curState.application_key_set);
+  fprintf(stderr, "application_iv_set : %d \n", curState.application_iv_set);
+  fprintf(stderr, "error_status : %d \n", curState.error_status);
+  fprintf(stderr, "terminated : %d \n", curState.terminated);
+  fprintf(stderr, "message_expected : %s \n", curState.message_expected);
+  fprintf(stderr, "message_received : %s \n", curState.message_received);
+  fprintf(stderr, "message_sent : %s \n", curState.message_sent);
+  fprintf(stderr, "\n-----------------------------------------\n");
+  stateCounter++;
+}
+// #endif
+
 #if defined(HAVE_ECH)
 #define ECH_ACCEPT_CONFIRMATION_SZ 8
 #define ECH_ACCEPT_CONFIRMATION_LABEL_SZ 23
@@ -695,6 +739,13 @@ static int DeriveServerHandshakeSecret(WOLFSSL* ssl, byte* key)
     }
 #endif /* OPENSSL_EXTRA */
 #endif /* HAVE_SECRET_CALLBACK */
+
+    // #ifdef INSTRUMENTATION
+    curState.handshake_secret_set = true;
+    curState.handshake_key_set = true;
+    curState.handshake_iv_set = true;
+    // #endif
+
     return ret;
 }
 
@@ -785,6 +836,13 @@ static int DeriveServerTrafficSecret(WOLFSSL* ssl, byte* key)
     }
 #endif /* OPENSSL_EXTRA */
 #endif /* HAVE_SECRET_CALLBACK */
+
+    // #ifdef INSTRUMENTATION
+    curState.master_secret_set = true;
+    curState.application_key_set = true;
+    curState.application_iv_set = true;
+    // #endif
+
     return ret;
 }
 
@@ -6867,11 +6925,19 @@ int SendTls13ServerHello(WOLFSSL* ssl, byte extMsgType)
     WOLFSSL_BUFFER(ssl->arrays->serverRandom, RAN_LEN);
 #endif
 
+    // #ifdef INSTRUMENTATION
+    curState.random_set = true;
+    // #endif
+
     output[idx++] = ssl->session->sessionIDSz;
     if (ssl->session->sessionIDSz > 0) {
         XMEMCPY(output + idx, ssl->session->sessionID, ssl->session->sessionIDSz);
         idx += ssl->session->sessionIDSz;
     }
+
+    // #ifdef INSTRUMENTATION
+    curState.session_id_set = true;
+    // #endif
 
     /* Chosen cipher suite */
     output[idx++] = ssl->options.cipherSuite0;
@@ -6968,6 +7034,11 @@ int SendTls13ServerHello(WOLFSSL* ssl, byte extMsgType)
 
     WOLFSSL_LEAVE("SendTls13ServerHello", ret);
     WOLFSSL_END(WC_FUNC_SERVER_HELLO_SEND);
+
+    // #ifdef INSTRUMENTATION
+    strcpy(curState.message_sent, "server hello");
+    printTLS13State();
+    // #endif
 
     return ret;
 }
@@ -10344,6 +10415,11 @@ static int SanityCheckTls13MsgReceived(WOLFSSL* ssl, byte type)
                 WOLFSSL_ERROR_VERBOSE(SIDE_ERROR);
                 return SIDE_ERROR;
             }
+
+        // #ifdef INSTRUMENTATION
+        strcpy(curState.message_received, "client hello");
+        // #endif
+    
         #endif
             /* Check state. */
             if (ssl->options.clientState >= CLIENT_HELLO_COMPLETE) {
@@ -10635,6 +10711,13 @@ static int SanityCheckTls13MsgReceived(WOLFSSL* ssl, byte type)
     #ifndef NO_WOLFSSL_SERVER
             /* Check state on server. */
             if (ssl->options.side == WOLFSSL_SERVER_END) {
+
+                // #ifdef INSTRUMENTATION
+                strcpy(curState.message_received , "client handshake finished");
+                strcpy(curState.message_sent , "NULL");
+                printTLS13State();
+                // #endif
+
                 /* Server must have sent Finished message. */
                 if (ssl->options.serverState < SERVER_FINISHED_COMPLETE) {
                     WOLFSSL_MSG("CertificateVerify received out of order");
@@ -12494,6 +12577,10 @@ int wolfSSL_accept_TLSv13(WOLFSSL* ssl)
 
     WOLFSSL_ENTER("SSL_accept_TLSv13()");
 
+    // #ifdef INSTRUMENTATION
+    printTLS13State();
+    // #endif
+
 #ifdef HAVE_ERRNO_H
     errno = 0;
 #endif
@@ -12815,6 +12902,13 @@ int wolfSSL_accept_TLSv13(WOLFSSL* ssl)
             }
             ssl->options.acceptState = TLS13_SERVER_EXTENSIONS_SENT;
             WOLFSSL_MSG("accept state SERVER_EXTENSIONS_SENT");
+
+            // #ifdef INSTRUMENTATION
+            strcpy(curState.message_received , "NULL");
+            strcpy(curState.message_sent , "encrypted extensions");
+            printTLS13State();
+            // #endif
+
             FALL_THROUGH;
 
         case TLS13_SERVER_EXTENSIONS_SENT :
@@ -12830,6 +12924,12 @@ int wolfSSL_accept_TLSv13(WOLFSSL* ssl)
                         WOLFSSL_ERROR(ssl->error);
                         return WOLFSSL_FATAL_ERROR;
                     }
+
+                    // #ifdef INSTRUMENTATION
+                    strcpy(curState.message_received , "NULL");
+                    strcpy(curState.message_sent , "client certificate request");
+                    printTLS13State();
+                    // #endif
                 }
                 else {
                     /* SERVER: Peer auth good if not verifying client. */
@@ -12852,6 +12952,13 @@ int wolfSSL_accept_TLSv13(WOLFSSL* ssl)
 #endif
             ssl->options.acceptState = TLS13_CERT_SENT;
             WOLFSSL_MSG("accept state CERT_SENT");
+
+            // #ifdef INSTRUMENTATION
+            strcpy(curState.message_received , "NULL");
+            strcpy(curState.message_sent , "server certificate");
+            printTLS13State();
+            // #endif
+
             FALL_THROUGH;
 
         case TLS13_CERT_SENT :
@@ -12866,6 +12973,13 @@ int wolfSSL_accept_TLSv13(WOLFSSL* ssl)
 #endif
             ssl->options.acceptState = TLS13_CERT_VERIFY_SENT;
             WOLFSSL_MSG("accept state CERT_VERIFY_SENT");
+
+            // #ifdef INSTRUMENTATION
+            strcpy(curState.message_received , "NULL");
+            strcpy(curState.message_sent , "server certificate verify");
+            printTLS13State();
+            // #endif
+
             FALL_THROUGH;
 
         case TLS13_CERT_VERIFY_SENT :
@@ -12873,6 +12987,12 @@ int wolfSSL_accept_TLSv13(WOLFSSL* ssl)
                 WOLFSSL_ERROR(ssl->error);
                 return WOLFSSL_FATAL_ERROR;
             }
+
+            // #ifdef INSTRUMENTATION
+            strcpy(curState.message_received , "NULL");
+            strcpy(curState.message_sent , "server handshake finished");
+            printTLS13State();
+            // #endif
 
             ssl->options.acceptState = TLS13_ACCEPT_FINISHED_SENT;
             WOLFSSL_MSG("accept state ACCEPT_FINISHED_SENT");
