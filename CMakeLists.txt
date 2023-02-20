@@ -28,16 +28,35 @@ if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
      You must delete them, or cmake will refuse to work.")
 endif()
 
-project(wolfssl VERSION 5.5.4 LANGUAGES C ASM)
+
+
+
+include(FindPkgConfig)
+
+pkg_check_modules(LIBMYSQLCLIENT REQUIRED mysqlclient)
+
+ 
+
+foreach(FLAG ${LIBMYSQLCLIENT_CFLAGS_OTHER})
+
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${FLAG}")
+
+endforeach()
+
+ 
+
+link_directories(${LIBMYSQLCLIENT_LIBRARY_DIRS})
+
+project(wolfssl VERSION 5.5.3 LANGUAGES C ASM)
 
 # shared library versioning
 # increment if interfaces have been added, removed or changed
-set(LIBTOOL_CURRENT 38)
+set(LIBTOOL_CURRENT 37)
 # increment if source code has changed  set to zero if current is incremented
-set(LIBTOOL_REVISION 0)
+set(LIBTOOL_REVISION 1)
 # increment if interfaces have been added set to zero if interfaces have been
 # removed or changed
-set(LIBTOOL_AGE 3)
+set(LIBTOOL_AGE 2)
 
 math(EXPR LIBTOOL_SO_VERSION "${LIBTOOL_CURRENT} - ${LIBTOOL_AGE}")
 set(LIBTOOL_FULL_VERSION ${LIBTOOL_SO_VERSION}.${LIBTOOL_AGE}.${LIBTOOL_REVISION})
@@ -103,7 +122,6 @@ check_function_exists("inet_ntoa" HAVE_INET_NTOA)
 check_function_exists("memset" HAVE_MEMSET)
 check_function_exists("socket" HAVE_SOCKET)
 check_function_exists("strftime" HAVE_STRFTIME)
-check_function_exists("__atomic_fetch_add" HAVE_C___ATOMIC)
 
 include(CheckTypeSize)
 
@@ -931,7 +949,7 @@ endif()
 # DH
 add_option("WOLFSSL_DH"
     "Enable DH (default: enabled)"
-    "yes" "yes;no;const")
+    "yes" "yes;no")
 
 if(WOLFSSL_OPENSSH)
     override_cache(WOLFSSL_DH "yes")
@@ -944,11 +962,6 @@ else()
       list(APPEND WOLFSSL_DEFINITIONS "-DNO_DH")
       override_cache(WOLFSSL_DH "no")
     endif()
-endif()
-
-if("${WOLFSSL_DH}" STREQUAL "const")
-    list(APPEND WOLFSSL_DEFINITIONS "-DWOLFSSL_DH_CONST")
-    set(WOLFSSL_DH_CONST "yes")
 endif()
 
 # TODO: - Anonymous
@@ -1817,7 +1830,7 @@ if(WOLFSSL_USER_SETTINGS)
         -DWOLFSSL_USER_SETTINGS_ASM")
 
     # Create user_settings_asm.h for use in assembly files (e.g. .S files).
-    execute_process(COMMAND $ENV{SHELL} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/user_settings_asm.sh
+    execute_process(COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/user_settings_asm.sh
                             "${CMAKE_C_FLAGS} ${CMAKE_CXX_FLAGS}"
                     RESULT_VARIABLE USER_SETTINGS_ASM_RET)
     if (NOT USER_SETTINGS_ASM_RET EQUAL 0)
@@ -1935,31 +1948,33 @@ target_include_directories(wolfssl
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
         ${WOLFSSL_INCLUDE_DIRS}
+        ${LIBMYSQLCLIENT_INCLUDE_DIRS}
 )
 
 ####################################################
 # Link Libraries
 ####################################################
 
-target_link_libraries(wolfssl PUBLIC ${WOLFSSL_LINK_LIBS})
+target_link_libraries(wolfssl PUBLIC ${WOLFSSL_LINK_LIBS} ${LIBMYSQLCLIENT_LIBRARIES})
 
 if(WIN32)
     # For Windows link ws2_32
     target_link_libraries(wolfssl PUBLIC
-        $<$<PLATFORM_ID:Windows>:ws2_32>)
+        $<$<PLATFORM_ID:Windows>:ws2_32>
+        ${LIBMYSQLCLIENT_LIBRARIES})
 elseif(APPLE)
     if(WOLFSSL_SYS_CA_CERTS)
         target_link_libraries(wolfssl PUBLIC
             ${CORE_FOUNDATION_FRAMEWORK}
-            ${SECURITY_FRAMEWORK})
+            ${SECURITY_FRAMEWORK}
+            ${LIBMYSQLCLIENT_LIBRARIES})
     endif()
 else()
-    if(WOLFSSL_DH AND NOT WOLFSSL_DH_CONST)
-        # DH requires math (m) library
-        target_link_libraries(wolfssl
-            PUBLIC
-                m)
-    endif()
+    # DH requires math (m) library
+    target_link_libraries(wolfssl
+        PUBLIC
+            m
+            ${LIBMYSQLCLIENT_LIBRARIES})
 endif()
 
 ####################################################
@@ -1970,7 +1985,7 @@ if(WOLFSSL_EXAMPLES)
     # Build wolfSSL client example
     add_executable(client
         ${CMAKE_CURRENT_SOURCE_DIR}/examples/client/client.c)
-    target_link_libraries(client wolfssl)
+    target_link_libraries(client wolfssl ${LIBMYSQLCLIENT_LIBRARIES})
     set_property(TARGET client
                  PROPERTY RUNTIME_OUTPUT_DIRECTORY
                  ${WOLFSSL_OUTPUT_BASE}/examples/client)
@@ -1978,7 +1993,7 @@ if(WOLFSSL_EXAMPLES)
     # Build wolfSSL server example
     add_executable(server
         ${CMAKE_CURRENT_SOURCE_DIR}/examples/server/server.c)
-    target_link_libraries(server wolfssl)
+    target_link_libraries(server wolfssl ${LIBMYSQLCLIENT_LIBRARIES}) 
     set_property(TARGET server
                  PROPERTY RUNTIME_OUTPUT_DIRECTORY
                  ${WOLFSSL_OUTPUT_BASE}/examples/server)
@@ -1987,8 +2002,9 @@ if(WOLFSSL_EXAMPLES)
     add_executable(echoclient
         ${CMAKE_CURRENT_SOURCE_DIR}/examples/echoclient/echoclient.c)
     target_include_directories(echoclient PRIVATE
-        ${CMAKE_CURRENT_BINARY_DIR})
-    target_link_libraries(echoclient wolfssl)
+        ${CMAKE_CURRENT_BINARY_DIR}
+        ${LIBMYSQLCLIENT_INCLUDE_DIRS})
+    target_link_libraries(echoclient wolfssl ${LIBMYSQLCLIENT_LIBRARIES})
     set_property(TARGET echoclient
                  PROPERTY RUNTIME_OUTPUT_DIRECTORY
                  ${WOLFSSL_OUTPUT_BASE}/examples/echoclient)
@@ -1997,8 +2013,9 @@ if(WOLFSSL_EXAMPLES)
     add_executable(echoserver
         ${CMAKE_CURRENT_SOURCE_DIR}/examples/echoserver/echoserver.c)
     target_include_directories(echoserver PRIVATE
-        ${CMAKE_CURRENT_BINARY_DIR})
-    target_link_libraries(echoserver wolfssl)
+        ${CMAKE_CURRENT_BINARY_DIR}
+        ${LIBMYSQLCLIENT_INCLUDE_DIRS})
+    target_link_libraries(echoserver wolfssl ${LIBMYSQLCLIENT_LIBRARIES})
     set_property(TARGET echoserver
                  PROPERTY RUNTIME_OUTPUT_DIRECTORY
                  ${WOLFSSL_OUTPUT_BASE}/examples/echoserver)
@@ -2007,8 +2024,8 @@ if(WOLFSSL_EXAMPLES)
         # Build TLS benchmark example
         add_executable(tls_bench
             ${CMAKE_CURRENT_SOURCE_DIR}/examples/benchmark/tls_bench.c)
-        target_link_libraries(tls_bench wolfssl)
-        target_link_libraries(tls_bench Threads::Threads)
+        target_link_libraries(tls_bench wolfssl ${LIBMYSQLCLIENT_LIBRARIES})
+        target_link_libraries(tls_bench Threads::Threads ${LIBMYSQLCLIENT_LIBRARIES}) 
         set_property(TARGET tls_bench
                  PROPERTY RUNTIME_OUTPUT_DIRECTORY
                  ${WOLFSSL_OUTPUT_BASE}/examples/benchmark)
@@ -2025,10 +2042,11 @@ if(WOLFSSL_EXAMPLES)
         examples/server/server.c
         examples/client/client.c)
     target_include_directories(unit_test PRIVATE
-        ${CMAKE_CURRENT_BINARY_DIR})
+        ${CMAKE_CURRENT_BINARY_DIR}
+        ${LIBMYSQLCLIENT_INCLUDE_DIRS})
     target_compile_options(unit_test PUBLIC "-DNO_MAIN_DRIVER")
-    target_link_libraries(unit_test wolfssl)
-    target_link_libraries(unit_test Threads::Threads)
+    target_link_libraries(unit_test wolfssl ${LIBMYSQLCLIENT_LIBRARIES})
+    target_link_libraries(unit_test Threads::Threads ${LIBMYSQLCLIENT_LIBRARIES})
     set_property(TARGET unit_test
                  PROPERTY RUNTIME_OUTPUT_DIRECTORY
                  ${WOLFSSL_OUTPUT_BASE}/tests/)
@@ -2047,7 +2065,7 @@ if(WOLFSSL_CRYPT_TESTS)
         add_library(wolfcrypttest_lib
             ${CMAKE_CURRENT_SOURCE_DIR}/wolfcrypt/test/test.c)
         set_target_properties(wolfcrypttest_lib PROPERTIES OUTPUT_NAME "wolfcrypttest")
-        target_link_libraries(wolfcrypttest_lib wolfssl)
+        target_link_libraries(wolfcrypttest_lib wolfssl ${LIBMYSQLCLIENT_LIBRARIES})
         target_compile_options(wolfcrypttest_lib PRIVATE "-DNO_MAIN_DRIVER")
         if(WOLFSSL_CRYPT_TESTS_HELP)
             target_compile_options(wolfcrypttest_lib PRIVATE "-DHAVE_WOLFCRYPT_TEST_OPTIONS")
@@ -2057,14 +2075,14 @@ if(WOLFSSL_CRYPT_TESTS)
         add_library(wolfcryptbench_lib
             ${CMAKE_CURRENT_SOURCE_DIR}/wolfcrypt/benchmark/benchmark.c)
         set_target_properties(wolfcryptbench_lib PROPERTIES OUTPUT_NAME "wolfcryptbench")
-        target_link_libraries(wolfcryptbench_lib wolfssl)
+        target_link_libraries(wolfcryptbench_lib wolfssl ${LIBMYSQLCLIENT_LIBRARIES})
         target_compile_options(wolfcryptbench_lib PRIVATE "-DNO_MAIN_DRIVER")
     endif()
 
     # Build wolfCrypt test executable.
     add_executable(wolfcrypttest
         ${CMAKE_CURRENT_SOURCE_DIR}/wolfcrypt/test/test.c)
-    target_link_libraries(wolfcrypttest wolfssl)
+    target_link_libraries(wolfcrypttest wolfssl ${LIBMYSQLCLIENT_LIBRARIES})
     set_property(TARGET wolfcrypttest
                  PROPERTY RUNTIME_OUTPUT_DIRECTORY
                  ${WOLFSSL_OUTPUT_BASE}/wolfcrypt/test)
@@ -2079,8 +2097,9 @@ if(WOLFSSL_CRYPT_TESTS)
     add_executable(wolfcryptbench
         ${CMAKE_CURRENT_SOURCE_DIR}/wolfcrypt/benchmark/benchmark.c)
     target_include_directories(wolfcryptbench PRIVATE
-        ${CMAKE_CURRENT_BINARY_DIR})
-    target_link_libraries(wolfcryptbench wolfssl)
+        ${CMAKE_CURRENT_BINARY_DIR}
+        ${LIBMYSQLCLIENT_INCLUDE_DIRS})
+    target_link_libraries(wolfcryptbench wolfssl ${LIBMYSQLCLIENT_LIBRARIES})
     set_property(TARGET wolfcryptbench
                  PROPERTY RUNTIME_OUTPUT_DIRECTORY
                  ${WOLFSSL_OUTPUT_BASE}/wolfcrypt/benchmark)
