@@ -23,6 +23,8 @@
  * https://github.com/wolfSSL/wolfssl-examples/tree/master/tls
  */
 
+#include "../src/mc_tls_sql.h"
+
 #ifdef HAVE_CONFIG_H
     #include <config.h>
 #endif
@@ -3343,6 +3345,10 @@ THREAD_RETURN WOLFSSL_THREAD server_test(void* args)
         EarlyDataStatus(ssl);
 #endif
         if (ret != WOLFSSL_SUCCESS) {
+            // #ifdef INSTRUMENTATION
+            updateTls13ErrorState();
+            // #endif
+
             err = SSL_get_error(ssl, 0);
             fprintf(stderr, "SSL_accept error %d, %s\n", err,
                                                 ERR_error_string(err, buffer));

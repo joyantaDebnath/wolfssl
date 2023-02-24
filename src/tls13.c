@@ -109,8 +109,6 @@
 #include <sys/time.h>
 #endif /* __MACH__ || __FreeBSD__ || __INCLUDE_NUTTX_CONFIG_H */
 
-#include "mc_tls_sql.h"
-
 #include <wolfssl/internal.h>
 #include <wolfssl/error-ssl.h>
 #include <wolfssl/wolfcrypt/asn.h>
@@ -169,7 +167,8 @@ static const byte dtls13ProtocolLabel[DTLS13_PROTOCOL_LABEL_SZ + 1] = "dtls13";
 #endif /* WOLFSSL_DTLS13 */
 
 // #ifdef INSTRUMENTATION
-#include<stdbool.h>
+// #include<stdbool.h>
+#include "mc_tls_sql.h"
 // struct TLS13state {
 //   bool session_id_set;
 //   bool random_set;
@@ -188,12 +187,12 @@ static const byte dtls13ProtocolLabel[DTLS13_PROTOCOL_LABEL_SZ + 1] = "dtls13";
 // };
 
 void printTLS13State(void);
-
-
+void updateTls13ErrorState(void);
+void initTls13State(void);
 
 // struct TLS13state curState = {false, false, false, false, false, false, false, false, false, false, "NULL", "NULL", "NULL"};
-struct TLS13state curState = { 1,false, false, false, false, false, false, false, false, false, false, "NULL", "NULL", "NULL"};
-int stateCounter = 0;
+struct TLS13state curState;
+int stateCounter;
 
 void printTLS13State(void) {
   fprintf(stderr, "\n---------------- State : %d ---------------------\n", stateCounter);
@@ -211,70 +210,81 @@ void printTLS13State(void) {
   fprintf(stderr, "message_received : %s \n", curState.message_received);
   fprintf(stderr, "message_sent : %s \n", curState.message_sent);
   fprintf(stderr, "\n-----------------------------------------\n");
-  add_new_state(curState,stateCounter);
+  add_new_state(curState, stateCounter, "wolfssl");
   stateCounter++;
+
+  strcpy(curState.message_expected, "NULL");
+  strcpy(curState.message_received, "NULL");
+  strcpy(curState.message_sent, "NULL");
 }
 
-void updateTls13ErrorState(bool e_state){
-    curState.error_status = e_state;   
-    printTLS13State(); 
+void updateTls13ErrorState() {
+    curState.error_status = true;
+    printTLS13State();
 }
 
-bool add_new_state( struct TLS13state state, int state_counter){
-    MYSQL *mysql =NULL;
+void initTls13State() {
+    struct TLS13state curStateNew = {false, false, false, false, false, false, false, false, false, false, "NULL", "NULL", "NULL"};
+    curState = curStateNew;
+    stateCounter = 0;
+    printTLS13State();
+}
+
+bool add_new_state(struct TLS13state state, int state_counter, char *server_name) {
+    MYSQL *mysql = NULL;
 
     const char* host = "localhost";
-    const char* user = "root";
-    const char* passwd = "password";
+    const char* user = "joy";
+    const char* passwd = "@Joyanta1234";
     const char* db = "mydatabase";
 
-    // const char* insert_query = "insert into mc_tls_state_info (state_counter, test_server_id, session_id_set , random_set,handshake_secret_set, handshake_key_set,handshake_iv_set,master_secret_set,application_key_set,application_iv_set, error_status_set, message_received, message_sent  ) values(?,?,?,?,?,?,?,?,?,?,?,?,? ); ";
-    const char* insert_query = "insert into mc_tls_state_info (state_counter, test_server_id, session_id_set , random_set,handshake_secret_set, handshake_key_set,handshake_iv_set,master_secret_set,application_key_set,application_iv_set, error_status_set  ) values(?,?,?,?,?,?,?,?,?,?,?); ";
+    const char* insert_query = "insert into mc_tls_state_info (server_name, state_counter, session_id_set, random_set, handshake_secret_set, handshake_key_set, handshake_iv_set, master_secret_set, application_key_set, application_iv_set, error_status_set, terminated_set, message_expected, message_received, message_sent) values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
-    mysql =mysql_init(NULL);
+    mysql = mysql_init(NULL);
     if(mysql == NULL){
       fprintf(stderr, "failed to initialise mysql");
     }
-    else{
-      fprintf(stdout, "initialised mysql1\n"); 
-    }
-      if (mysql_real_connect(mysql, host, user, passwd, db, 0, NULL, 0) == NULL) {
+
+    if (mysql_real_connect(mysql, host, user, passwd, db, 0, NULL, 0) == NULL) {
         fprintf(stderr, "ERROR:mysql_real_connect() failed.\n");
         exit(1);
     }
 
-
     MYSQL_STMT *statement = NULL;
     statement = mysql_stmt_init(mysql);
     if(statement==NULL){
-        fprintf(stderr,"failed to initalise sql prepared statement");
+        fprintf(stderr, "failed to initalise sql prepared statement");
         exit(1);
     }
-    int ret = mysql_stmt_prepare(statement,insert_query, strlen(insert_query));
+
+    int ret = mysql_stmt_prepare(statement, insert_query, strlen(insert_query));
     if (ret){
-        fprintf (stderr,"failed to prepare statement due to %d", ret);
-        fprintf (stderr,"%s" ,mysql_stmt_error(statement));
+        fprintf(stderr, "failed to prepare statement due to %d", ret);
+        fprintf(stderr, "%s" , mysql_stmt_error(statement));
         exit(1);
     }
-    MYSQL_BIND input_bind[12];
 
-    memset (input_bind,0,sizeof(input_bind));
+    MYSQL_BIND input_bind[15];
 
-    unsigned long id_len = sizeof(state_counter);
-    unsigned long bool_len = sizeof(state.session_id_set);
-    // unsigned long msg_rx_len = sizeof(state->message_received);
+    memset(input_bind, 0, sizeof(input_bind));
     
-    int i =0; 
+    int i =0;
+    unsigned long long_len = sizeof(state_counter);
+    unsigned long bool_len = sizeof(state.session_id_set);
+    unsigned long server_name_len = sizeof(server_name);
+    unsigned long msg_expected_len = sizeof(state.message_expected);
+    unsigned long msg_received_len = sizeof(state.message_received);
+    unsigned long msg_sent_len = sizeof(state.message_sent);
+
+    input_bind[i].buffer_type = MYSQL_TYPE_STRING;
+    input_bind[i].buffer = server_name;
+    input_bind[i].buffer_length = sizeof(server_name);
+    input_bind[i++].length = &server_name_len;
 
     input_bind[i].buffer_type = MYSQL_TYPE_LONG;
     input_bind[i].buffer = &state_counter;
     input_bind[i].buffer_length = sizeof(state_counter);
-    input_bind[i++].length = &id_len;
-
-    input_bind[i].buffer_type = MYSQL_TYPE_LONG;
-    input_bind[i].buffer = &state.test_server_id;
-    input_bind[i].buffer_length = sizeof(state.test_server_id);
-    input_bind[i++].length = &id_len;
+    input_bind[i++].length = &long_len;
 
     input_bind[i].buffer_type = MYSQL_TYPE_TINY;
     input_bind[i].buffer = &state.session_id_set;
@@ -320,19 +330,26 @@ bool add_new_state( struct TLS13state state, int state_counter){
     input_bind[i].buffer = &state.error_status;
     input_bind[i].buffer_length = sizeof(state.error_status);
     input_bind[i++].length = &bool_len;
-    
 
-    // input_bind[i].buffer_type = MYSQL_TYPE_TINY;
-    // input_bind[i].buffer = &state->message_received;
-    // input_bind[i].buffer_length = sizeof(state->message_received);
-    // input_bind[i++].length = &msg_rx_len;    
+    input_bind[i].buffer_type = MYSQL_TYPE_TINY;
+    input_bind[i].buffer = &state.terminated;
+    input_bind[i].buffer_length = sizeof(state.terminated);
+    input_bind[i++].length = &bool_len;
 
-    // input_bind[i].buffer_type = MYSQL_TYPE_TINY;
-    // input_bind[i].buffer = &state->message_received;
-    // input_bind[i].buffer_length = sizeof(state->message_received);
-    // input_bind[i++].length = &msg_rx_len;
-    
+    input_bind[i].buffer_type = MYSQL_TYPE_STRING;
+    input_bind[i].buffer = state.message_expected;
+    input_bind[i].buffer_length = sizeof(state.message_expected);
+    input_bind[i++].length = &msg_expected_len;    
 
+    input_bind[i].buffer_type = MYSQL_TYPE_STRING;
+    input_bind[i].buffer = state.message_received;
+    input_bind[i].buffer_length = sizeof(state.message_received);
+    input_bind[i++].length = &msg_received_len; 
+
+    input_bind[i].buffer_type = MYSQL_TYPE_STRING;
+    input_bind[i].buffer = state.message_sent;
+    input_bind[i].buffer_length = sizeof(state.message_sent);
+    input_bind[i++].length = &msg_sent_len; 
 
     if (mysql_stmt_bind_param(statement, input_bind)) {
         fprintf(stderr, "ERROR:mysql_stmt_bind_param failed\n");
@@ -345,9 +362,7 @@ bool add_new_state( struct TLS13state state, int state_counter){
     }
 
     return true;
-
 }
-
 // #endif
 
 #if defined(HAVE_ECH)
@@ -12733,10 +12748,6 @@ int wolfSSL_accept_TLSv13(WOLFSSL* ssl)
     int ret = 0;
 
     WOLFSSL_ENTER("SSL_accept_TLSv13()");
-
-    // #ifdef INSTRUMENTATION
-    printTLS13State();
-    // #endif
 
 #ifdef HAVE_ERRNO_H
     errno = 0;
