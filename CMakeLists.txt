@@ -30,6 +30,7 @@ endif()
 
 
 
+project(wolfssl VERSION 5.5.3 LANGUAGES C ASM)
 
 include(FindPkgConfig)
 
@@ -46,8 +47,6 @@ endforeach()
  
 
 link_directories(${LIBMYSQLCLIENT_LIBRARY_DIRS})
-
-project(wolfssl VERSION 5.5.3 LANGUAGES C ASM)
 
 # shared library versioning
 # increment if interfaces have been added, removed or changed
