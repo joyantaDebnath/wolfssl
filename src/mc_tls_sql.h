@@ -25,6 +25,6 @@ struct TLS13state {
 void printTLS13State(void);
 void updateTls13ErrorState(void);
 void initTls13State(void);
-bool add_new_state(struct TLS13state state, int state_counter, char *server_name);
+bool add_new_state(struct TLS13state state, int state_counter, char state_hash[]);
 
 #endif
