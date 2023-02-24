@@ -10611,6 +10611,10 @@ static int SanityCheckTls13MsgReceived(WOLFSSL* ssl, byte type)
 
 #ifndef NO_WOLFSSL_SERVER
         case client_hello:
+            // #ifdef INSTRUMENTATION
+            strcpy(curState.message_received, "client hello");
+            // #endif
+            
         #ifndef NO_WOLFSSL_CLIENT
             /* Only valid when received on SERVER side. */
             if (ssl->options.side == WOLFSSL_CLIENT_END) {
@@ -10618,10 +10622,6 @@ static int SanityCheckTls13MsgReceived(WOLFSSL* ssl, byte type)
                 WOLFSSL_ERROR_VERBOSE(SIDE_ERROR);
                 return SIDE_ERROR;
             }
-
-        // #ifdef INSTRUMENTATION
-        strcpy(curState.message_received, "client hello");
-        // #endif
     
         #endif
             /* Check state. */

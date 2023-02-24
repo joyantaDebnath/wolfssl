@@ -13664,6 +13664,7 @@ int wolfSSL_DTLS_SetCookieSecret(WOLFSSL* ssl,
     {
         // #ifdef INSTRUMENTATION
         initTls13State();
+        strcpy(curState.message_expected, "client hello");
         // #endif
 #if !(defined(WOLFSSL_NO_TLS12) && defined(NO_OLD_TLS) && defined(WOLFSSL_TLS13))
         word16 havePSK = 0;
