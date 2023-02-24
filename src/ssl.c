@@ -48,7 +48,7 @@
 #ifdef HAVE_ERRNO_H
     #include <errno.h>
 #endif
-
+#include <stdbool.h>
 
 #if !defined(WOLFSSL_ALLOW_NO_SUITES) && !defined(WOLFCRYPT_ONLY)
     #if defined(NO_DH) && !defined(HAVE_ECC) && !defined(WOLFSSL_STATIC_RSA) \
@@ -13667,11 +13667,23 @@ int wolfSSL_DTLS_SetCookieSecret(WOLFSSL* ssl,
     #endif /* OPENSSL_EXTRA || WOLFSSL_EITHER_SIDE */
 
 #if defined(WOLFSSL_NO_TLS12) && defined(NO_OLD_TLS) && defined(WOLFSSL_TLS13)
-        return wolfSSL_accept_TLSv13(ssl);
+        
+        ret = wolfSSL_accept_TLSv13(ssl);
+        if (ret !=0  || ssl->error !=0){
+            updateTls13ErrorState(true);
+        }
+        return ret;
+        
 #else
     #ifdef WOLFSSL_TLS13
-        if (ssl->options.tls1_3)
-            return wolfSSL_accept_TLSv13(ssl);
+        if (ssl->options.tls1_3){
+            // return wolfSSL_acce  pt_TLSv13(ssl);
+            ret = wolfSSL_accept_TLSv13(ssl);
+            if (ret !=0 || ssl->error !=0){
+                updateTls13ErrorState(true);
+            }
+            return ret;
+        }
     #endif
         WOLFSSL_ENTER("SSL_accept()");
 
@@ -13850,7 +13862,11 @@ int wolfSSL_DTLS_SetCookieSecret(WOLFSSL* ssl,
 
         case ACCEPT_CLIENT_HELLO_DONE :
             if (ssl->options.tls1_3) {
-                return wolfSSL_accept_TLSv13(ssl);
+                ret = wolfSSL_accept_TLSv13(ssl);
+                if (ret !=0 || ssl->error !=0){
+                    updateTls13ErrorState(true);
+                }
+                return ret;
             }
 #endif
 
@@ -13881,7 +13897,11 @@ int wolfSSL_DTLS_SetCookieSecret(WOLFSSL* ssl,
         case SERVER_HELLO_SENT :
         #ifdef WOLFSSL_TLS13
             if (ssl->options.tls1_3) {
-                return wolfSSL_accept_TLSv13(ssl);
+                ret = wolfSSL_accept_TLSv13(ssl);
+                if (ret !=0 || ssl->error !=0){
+                    updateTls13ErrorState(true);
+                }
+                return ret;
             }
         #endif
             #ifndef NO_CERTS
@@ -13910,7 +13930,11 @@ int wolfSSL_DTLS_SetCookieSecret(WOLFSSL* ssl,
         case CERT_STATUS_SENT :
         #ifdef WOLFSSL_TLS13
             if (ssl->options.tls1_3) {
-                return wolfSSL_accept_TLSv13(ssl);
+                ret = wolfSSL_accept_TLSv13(ssl);
+                if (ret !=0 || ssl->error !=0){
+                    updateTls13ErrorState(true);
+                }
+                return ret;
             }
         #endif
             if (!ssl->options.resuming)

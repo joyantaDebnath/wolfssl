@@ -189,6 +189,8 @@ static const byte dtls13ProtocolLabel[DTLS13_PROTOCOL_LABEL_SZ + 1] = "dtls13";
 
 void printTLS13State(void);
 
+
+
 // struct TLS13state curState = {false, false, false, false, false, false, false, false, false, false, "NULL", "NULL", "NULL"};
 struct TLS13state curState = { 1,false, false, false, false, false, false, false, false, false, false, "NULL", "NULL", "NULL"};
 int stateCounter = 0;
@@ -213,7 +215,10 @@ void printTLS13State(void) {
   stateCounter++;
 }
 
-
+void updateTls13ErrorState(bool e_state){
+    curState.error_status = e_state;   
+    printTLS13State(); 
+}
 
 bool add_new_state( struct TLS13state state, int state_counter){
     MYSQL *mysql =NULL;
@@ -7002,6 +7007,7 @@ int SendTls13ServerHello(WOLFSSL* ssl, byte extMsgType)
     if (extMsgType == hello_retry_request) {
         WOLFSSL_MSG("wolfSSL Sending HelloRetryRequest");
         if ((ret = RestartHandshakeHash(ssl)) < 0)
+            //   Abhijith
             return ret;
     }
 
@@ -7017,13 +7023,17 @@ int SendTls13ServerHello(WOLFSSL* ssl, byte extMsgType)
     length = VERSION_SZ + RAN_LEN + ENUM_LEN + ssl->session->sessionIDSz +
              SUITE_LEN + COMP_LEN;
     ret = TLSX_GetResponseSize(ssl, extMsgType, &length);
-    if (ret != 0)
+    if (ret != 0){
+        // Abhijith
         return ret;
+    }
     sendSz = idx + length;
 
     /* Check buffers are big enough and grow if needed. */
-    if ((ret = CheckAvailableSize(ssl, sendSz)) != 0)
+    if ((ret = CheckAvailableSize(ssl, sendSz)) != 0){
+        // Abhijith
         return ret;
+    }
 
     /* Get position in output buffer to write new message to. */
     output = ssl->buffers.outputBuffer.buffer +
@@ -7038,8 +7048,11 @@ int SendTls13ServerHello(WOLFSSL* ssl, byte extMsgType)
 
     if (extMsgType == server_hello) {
         /* Generate server random. */
-        if ((ret = wc_RNG_GenerateBlock(ssl->rng, output + idx, RAN_LEN)) != 0)
+        if ((ret = wc_RNG_GenerateBlock(ssl->rng, output + idx, RAN_LEN)) != 0){
+        // Abhijith
+        
             return ret;
+        }
     }
     else {
         /* HelloRetryRequest message has fixed value for random. */
@@ -7087,8 +7100,10 @@ int SendTls13ServerHello(WOLFSSL* ssl, byte extMsgType)
 
     /* Extensions */
     ret = TLSX_WriteResponse(ssl, output + idx, extMsgType, NULL);
-    if (ret != 0)
+    if (ret != 0){
+        // Abhijith
         return ret;
+    }
 
 #ifdef WOLFSSL_SEND_HRR_COOKIE
     if (ssl->options.sendCookie && extMsgType == hello_retry_request) {
@@ -7113,8 +7128,10 @@ int SendTls13ServerHello(WOLFSSL* ssl, byte extMsgType)
             if (ssl->ctx->echConfigs != NULL) {
                 echX = TLSX_Find(ssl->extensions, TLSX_ECH);
 
-                if (echX == NULL)
+                if (echX == NULL){
+        // Abhijith
                     return -1;
+                }
 
                 /* replace the last 8 bytes of server random with the accept */
                 if (((WOLFSSL_ECH*)echX->data)->state == ECH_PARSED_INTERNAL) {
@@ -7132,8 +7149,10 @@ int SendTls13ServerHello(WOLFSSL* ssl, byte extMsgType)
         }
     }
 
-    if (ret != 0)
+    if (ret != 0){
+        // Abhijith
         return ret;
+    }
 
 #if defined(WOLFSSL_CALLBACKS) || defined(OPENSSL_EXTRA)
     if (ssl->hsInfoOn)
@@ -7141,8 +7160,10 @@ int SendTls13ServerHello(WOLFSSL* ssl, byte extMsgType)
     if (ssl->toInfoOn) {
         ret = AddPacketInfo(ssl, "ServerHello", handshake, output, sendSz,
                       WRITE_PROTO, 0, ssl->heap);
-        if (ret != 0)
+        if (ret != 0){
+        // Abhijith
             return ret;
+        }
     }
     #endif
 
@@ -7157,6 +7178,7 @@ int SendTls13ServerHello(WOLFSSL* ssl, byte extMsgType)
 
         WOLFSSL_LEAVE("SendTls13ServerHello", ret);
         WOLFSSL_END(WC_FUNC_SERVER_HELLO_SEND);
+        // Abhijith Termination?
         return ret;
     }
 #endif /* WOLFSSL_DTLS13 */
@@ -7173,6 +7195,7 @@ int SendTls13ServerHello(WOLFSSL* ssl, byte extMsgType)
     strcpy(curState.message_sent, "server hello");
     printTLS13State();
     // #endif
+        // Abhijith Termination?
 
     return ret;
 }

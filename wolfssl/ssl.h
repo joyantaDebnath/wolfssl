@@ -37,6 +37,7 @@
 #include <wolfssl/wolfcrypt/logging.h>
 #include <wolfssl/wolfcrypt/memory.h>
 #include <wolfssl/wolfcrypt/types.h>
+#include <stdbool.h>
 
 /* For the types */
 #include <wolfssl/openssl/compat_types.h>
@@ -1197,6 +1198,8 @@ WOLFSSL_API int  wolfSSL_set1_groups(WOLFSSL* ssl, int* groups, int count);
 
 WOLFSSL_API int  wolfSSL_connect_TLSv13(WOLFSSL* ssl);
 WOLFSSL_API int  wolfSSL_accept_TLSv13(WOLFSSL* ssl);
+
+void updateTls13ErrorState(bool e_state);
 
 #ifdef WOLFSSL_EARLY_DATA
 
