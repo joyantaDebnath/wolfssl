@@ -220,6 +220,7 @@ void printTLS13State(void) {
 
 void updateTls13ErrorState() {
     curState.error_status = true;
+    strcpy(curState.message_sent, "error");
     printTLS13State();
 }
 
