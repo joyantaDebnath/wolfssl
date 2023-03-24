@@ -1,7 +1,8 @@
 #ifndef MC_TLS_SQL_H
 
-#include<mysql/mysql.h>
+// #include<mysql/mysql.h>
 #include<string.h>
+#include<stdbool.h>
 
 #define MC_TLS_SQL_H
 
@@ -17,7 +18,6 @@ struct TLS13state {
   bool error_status;
   bool terminated;
 
-  char message_expected[70];
   char message_received[70];
   char message_sent[70];
 };
@@ -25,7 +25,7 @@ struct TLS13state {
 void printTLS13State(void);
 void updateTls13ErrorState(void);
 void initTls13State(void);
-bool add_new_state(struct TLS13state state, int state_counter, char state_hash[]);
+// bool add_new_state(struct TLS13state state, int state_counter, char state_hash[]);
 
 extern struct TLS13state curState;
 extern int stateCounter;

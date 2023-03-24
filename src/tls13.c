@@ -93,7 +93,7 @@
 #endif
 
 #include <wolfssl/wolfcrypt/settings.h>
-#include <openssl/sha.h>
+// #include <openssl/sha.h>
 
 #ifdef WOLFSSL_TLS13
 #ifdef HAVE_SESSION_TICKET
@@ -190,25 +190,25 @@ static const byte dtls13ProtocolLabel[DTLS13_PROTOCOL_LABEL_SZ + 1] = "dtls13";
 void printTLS13State(void);
 void updateTls13ErrorState(void);
 void initTls13State(void);
-void sha256_string(char *string, char *outputBuffer);
+// void sha256_string(char *string, char *outputBuffer);
 
 // struct TLS13state curState = {false, false, false, false, false, false, false, false, false, false, "NULL", "NULL", "NULL"};
 struct TLS13state curState;
 int stateCounter;
 
-void sha256_string(char *string, char *outputBuffer) {
-    unsigned char hash[SHA256_DIGEST_LENGTH];
-    SHA256_CTX sha256;
-    SHA256_Init(&sha256);
-    SHA256_Update(&sha256, string, strlen(string));
-    SHA256_Final(hash, &sha256);
-    int i = 0;
-    for(i = 0; i < SHA256_DIGEST_LENGTH; i++)
-    {
-        sprintf(outputBuffer + (i * 2), "%02x", hash[i]);
-    }
-    outputBuffer[64] = 0;
-}
+// void sha256_string(char *string, char *outputBuffer) {
+//     unsigned char hash[SHA256_DIGEST_LENGTH];
+//     SHA256_CTX sha256;
+//     SHA256_Init(&sha256);
+//     SHA256_Update(&sha256, string, strlen(string));
+//     SHA256_Final(hash, &sha256);
+//     int i = 0;
+//     for(i = 0; i < SHA256_DIGEST_LENGTH; i++)
+//     {
+//         sprintf(outputBuffer + (i * 2), "%02x", hash[i]);
+//     }
+//     outputBuffer[64] = 0;
+// }
 
 void printTLS13State(void) {
   fprintf(stderr, "\n---------------- State : %d ---------------------\n", stateCounter);
@@ -222,21 +222,19 @@ void printTLS13State(void) {
   fprintf(stderr, "application_iv_set : %d \n", curState.application_iv_set);
   fprintf(stderr, "error_status : %d \n", curState.error_status);
   fprintf(stderr, "terminated : %d \n", curState.terminated);
-  fprintf(stderr, "message_expected : %s \n", curState.message_expected);
   fprintf(stderr, "message_received : %s \n", curState.message_received);
   fprintf(stderr, "message_sent : %s \n", curState.message_sent);
   fprintf(stderr, "\n-----------------------------------------\n");
   
   // generate hash
-  char state_hash[65];
-  char state_string[100];
-  sprintf(state_string, "%d-%d-%d-%d-%d-%d-%d-%d-%d-%d", curState.session_id_set, curState.random_set, curState.handshake_secret_set, curState.handshake_key_set, curState.handshake_iv_set, curState.master_secret_set, curState.application_key_set, curState.application_iv_set, curState.error_status, curState.terminated);
-  sha256_string((char*) state_string, state_hash);
+//   char state_hash[65];
+//   char state_string[100];
+//   sprintf(state_string, "%d-%d-%d-%d-%d-%d-%d-%d-%d-%d", curState.session_id_set, curState.random_set, curState.handshake_secret_set, curState.handshake_key_set, curState.handshake_iv_set, curState.master_secret_set, curState.application_key_set, curState.application_iv_set, curState.error_status, curState.terminated);
+//   sha256_string((char*) state_string, state_hash);
 
-  add_new_state(curState, stateCounter, state_hash);
+//   add_new_state(curState, stateCounter, state_hash);
   stateCounter++;
 
-  strcpy(curState.message_expected, "NULL");
   strcpy(curState.message_received, "NULL");
   strcpy(curState.message_sent, "NULL");
 }
@@ -248,152 +246,152 @@ void updateTls13ErrorState() {
 }
 
 void initTls13State() {
-    struct TLS13state curStateNew = {false, false, false, false, false, false, false, false, false, false, "NULL", "NULL", "NULL"};
+    struct TLS13state curStateNew = {false, false, false, false, false, false, false, false, false, false, "NULL", "NULL"};
     curState = curStateNew;
     stateCounter = 0;
     printTLS13State();
 }
 
-bool add_new_state(struct TLS13state state, int state_counter, char state_hash[]) {
-    MYSQL *mysql = NULL;
+// bool add_new_state(struct TLS13state state, int state_counter, char state_hash[]) {
+//     MYSQL *mysql = NULL;
 
-    const char* host = "localhost";
-    const char* user = "joy";
-    const char* passwd = "@Joyanta1234";
-    const char* db = "mydatabase";
-    char server_name[] = "wolfssl";
+//     const char* host = "localhost";
+//     const char* user = "joy";
+//     const char* passwd = "@Joyanta1234";
+//     const char* db = "mydatabase";
+//     char server_name[] = "wolfssl";
 
-    const char* insert_query = "insert into mc_tls_state_info (server_name, state_counter, session_id_set, random_set, handshake_secret_set, handshake_key_set, handshake_iv_set, master_secret_set, application_key_set, application_iv_set, error_status_set, terminated_set, message_expected, message_received, message_sent, state_hash) values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+//     const char* insert_query = "insert into mc_tls_state_info (server_name, state_counter, session_id_set, random_set, handshake_secret_set, handshake_key_set, handshake_iv_set, master_secret_set, application_key_set, application_iv_set, error_status_set, terminated_set, message_expected, message_received, message_sent, state_hash) values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
-    mysql = mysql_init(NULL);
-    if(mysql == NULL){
-      fprintf(stderr, "failed to initialise mysql");
-    }
+//     mysql = mysql_init(NULL);
+//     if(mysql == NULL){
+//       fprintf(stderr, "failed to initialise mysql");
+//     }
 
-    if (mysql_real_connect(mysql, host, user, passwd, db, 0, NULL, 0) == NULL) {
-        fprintf(stderr, "ERROR:mysql_real_connect() failed.\n");
-        exit(1);
-    }
+//     if (mysql_real_connect(mysql, host, user, passwd, db, 0, NULL, 0) == NULL) {
+//         fprintf(stderr, "ERROR:mysql_real_connect() failed.\n");
+//         exit(1);
+//     }
 
-    MYSQL_STMT *statement = NULL;
-    statement = mysql_stmt_init(mysql);
-    if(statement==NULL){
-        fprintf(stderr, "failed to initalise sql prepared statement");
-        exit(1);
-    }
+//     MYSQL_STMT *statement = NULL;
+//     statement = mysql_stmt_init(mysql);
+//     if(statement==NULL){
+//         fprintf(stderr, "failed to initalise sql prepared statement");
+//         exit(1);
+//     }
 
-    int ret = mysql_stmt_prepare(statement, insert_query, strlen(insert_query));
-    if (ret){
-        fprintf(stderr, "failed to prepare statement due to %d", ret);
-        fprintf(stderr, "%s" , mysql_stmt_error(statement));
-        exit(1);
-    }
+//     int ret = mysql_stmt_prepare(statement, insert_query, strlen(insert_query));
+//     if (ret){
+//         fprintf(stderr, "failed to prepare statement due to %d", ret);
+//         fprintf(stderr, "%s" , mysql_stmt_error(statement));
+//         exit(1);
+//     }
 
-    MYSQL_BIND input_bind[16];
+//     MYSQL_BIND input_bind[16];
 
-    memset(input_bind, 0, sizeof(input_bind));
+//     memset(input_bind, 0, sizeof(input_bind));
     
-    int i = 0;
-    unsigned long long_len = sizeof(state_counter);
-    unsigned long bool_len = sizeof(state.session_id_set);
-    unsigned long server_name_len = sizeof(server_name);
-    unsigned long msg_expected_len = sizeof(state.message_expected);
-    unsigned long msg_received_len = sizeof(state.message_received);
-    unsigned long msg_sent_len = sizeof(state.message_sent);
-    unsigned long state_hash_len = 65;
+//     int i = 0;
+//     unsigned long long_len = sizeof(state_counter);
+//     unsigned long bool_len = sizeof(state.session_id_set);
+//     unsigned long server_name_len = sizeof(server_name);
+//     unsigned long msg_expected_len = sizeof(state.message_expected);
+//     unsigned long msg_received_len = sizeof(state.message_received);
+//     unsigned long msg_sent_len = sizeof(state.message_sent);
+//     unsigned long state_hash_len = 65;
 
-    input_bind[i].buffer_type = MYSQL_TYPE_STRING;
-    input_bind[i].buffer = server_name;
-    input_bind[i].buffer_length = sizeof(server_name);
-    input_bind[i++].length = &server_name_len;
+//     input_bind[i].buffer_type = MYSQL_TYPE_STRING;
+//     input_bind[i].buffer = server_name;
+//     input_bind[i].buffer_length = sizeof(server_name);
+//     input_bind[i++].length = &server_name_len;
 
-    input_bind[i].buffer_type = MYSQL_TYPE_LONG;
-    input_bind[i].buffer = &state_counter;
-    input_bind[i].buffer_length = sizeof(state_counter);
-    input_bind[i++].length = &long_len;
+//     input_bind[i].buffer_type = MYSQL_TYPE_LONG;
+//     input_bind[i].buffer = &state_counter;
+//     input_bind[i].buffer_length = sizeof(state_counter);
+//     input_bind[i++].length = &long_len;
 
-    input_bind[i].buffer_type = MYSQL_TYPE_TINY;
-    input_bind[i].buffer = &state.session_id_set;
-    input_bind[i].buffer_length = sizeof(state.session_id_set);
-    input_bind[i++].length = &bool_len;
+//     input_bind[i].buffer_type = MYSQL_TYPE_TINY;
+//     input_bind[i].buffer = &state.session_id_set;
+//     input_bind[i].buffer_length = sizeof(state.session_id_set);
+//     input_bind[i++].length = &bool_len;
     
-    input_bind[i].buffer_type = MYSQL_TYPE_TINY;
-    input_bind[i].buffer = &state.random_set;
-    input_bind[i].buffer_length = sizeof(state.random_set);
-    input_bind[i++].length = &bool_len;
+//     input_bind[i].buffer_type = MYSQL_TYPE_TINY;
+//     input_bind[i].buffer = &state.random_set;
+//     input_bind[i].buffer_length = sizeof(state.random_set);
+//     input_bind[i++].length = &bool_len;
     
-    input_bind[i].buffer_type = MYSQL_TYPE_TINY;
-    input_bind[i].buffer = &state.handshake_secret_set;
-    input_bind[i].buffer_length = sizeof(state.handshake_secret_set);
-    input_bind[i++].length = &bool_len;
+//     input_bind[i].buffer_type = MYSQL_TYPE_TINY;
+//     input_bind[i].buffer = &state.handshake_secret_set;
+//     input_bind[i].buffer_length = sizeof(state.handshake_secret_set);
+//     input_bind[i++].length = &bool_len;
     
-    input_bind[i].buffer_type = MYSQL_TYPE_TINY;
-    input_bind[i].buffer = &state.handshake_key_set;
-    input_bind[i].buffer_length = sizeof(state.handshake_key_set);
-    input_bind[i++].length = &bool_len;
+//     input_bind[i].buffer_type = MYSQL_TYPE_TINY;
+//     input_bind[i].buffer = &state.handshake_key_set;
+//     input_bind[i].buffer_length = sizeof(state.handshake_key_set);
+//     input_bind[i++].length = &bool_len;
     
-    input_bind[i].buffer_type = MYSQL_TYPE_TINY;
-    input_bind[i].buffer = &state.handshake_iv_set;
-    input_bind[i].buffer_length = sizeof(state.handshake_iv_set);
-    input_bind[i++].length = &bool_len;
+//     input_bind[i].buffer_type = MYSQL_TYPE_TINY;
+//     input_bind[i].buffer = &state.handshake_iv_set;
+//     input_bind[i].buffer_length = sizeof(state.handshake_iv_set);
+//     input_bind[i++].length = &bool_len;
     
-    input_bind[i].buffer_type = MYSQL_TYPE_TINY;
-    input_bind[i].buffer = &state.master_secret_set;
-    input_bind[i].buffer_length = sizeof(state.master_secret_set);
-    input_bind[i++].length = &bool_len;
+//     input_bind[i].buffer_type = MYSQL_TYPE_TINY;
+//     input_bind[i].buffer = &state.master_secret_set;
+//     input_bind[i].buffer_length = sizeof(state.master_secret_set);
+//     input_bind[i++].length = &bool_len;
     
-    input_bind[i].buffer_type = MYSQL_TYPE_TINY;
-    input_bind[i].buffer = &state.application_key_set;
-    input_bind[i].buffer_length = sizeof(state.application_key_set);
-    input_bind[i++].length = &bool_len;
+//     input_bind[i].buffer_type = MYSQL_TYPE_TINY;
+//     input_bind[i].buffer = &state.application_key_set;
+//     input_bind[i].buffer_length = sizeof(state.application_key_set);
+//     input_bind[i++].length = &bool_len;
     
-    input_bind[i].buffer_type = MYSQL_TYPE_TINY;
-    input_bind[i].buffer = &state.application_iv_set;
-    input_bind[i].buffer_length = sizeof(state.application_iv_set);
-    input_bind[i++].length = &bool_len;
+//     input_bind[i].buffer_type = MYSQL_TYPE_TINY;
+//     input_bind[i].buffer = &state.application_iv_set;
+//     input_bind[i].buffer_length = sizeof(state.application_iv_set);
+//     input_bind[i++].length = &bool_len;
     
-    input_bind[i].buffer_type = MYSQL_TYPE_TINY;
-    input_bind[i].buffer = &state.error_status;
-    input_bind[i].buffer_length = sizeof(state.error_status);
-    input_bind[i++].length = &bool_len;
+//     input_bind[i].buffer_type = MYSQL_TYPE_TINY;
+//     input_bind[i].buffer = &state.error_status;
+//     input_bind[i].buffer_length = sizeof(state.error_status);
+//     input_bind[i++].length = &bool_len;
 
-    input_bind[i].buffer_type = MYSQL_TYPE_TINY;
-    input_bind[i].buffer = &state.terminated;
-    input_bind[i].buffer_length = sizeof(state.terminated);
-    input_bind[i++].length = &bool_len;
+//     input_bind[i].buffer_type = MYSQL_TYPE_TINY;
+//     input_bind[i].buffer = &state.terminated;
+//     input_bind[i].buffer_length = sizeof(state.terminated);
+//     input_bind[i++].length = &bool_len;
 
-    input_bind[i].buffer_type = MYSQL_TYPE_STRING;
-    input_bind[i].buffer = state.message_expected;
-    input_bind[i].buffer_length = sizeof(state.message_expected);
-    input_bind[i++].length = &msg_expected_len;    
+//     input_bind[i].buffer_type = MYSQL_TYPE_STRING;
+//     input_bind[i].buffer = state.message_expected;
+//     input_bind[i].buffer_length = sizeof(state.message_expected);
+//     input_bind[i++].length = &msg_expected_len;    
 
-    input_bind[i].buffer_type = MYSQL_TYPE_STRING;
-    input_bind[i].buffer = state.message_received;
-    input_bind[i].buffer_length = sizeof(state.message_received);
-    input_bind[i++].length = &msg_received_len; 
+//     input_bind[i].buffer_type = MYSQL_TYPE_STRING;
+//     input_bind[i].buffer = state.message_received;
+//     input_bind[i].buffer_length = sizeof(state.message_received);
+//     input_bind[i++].length = &msg_received_len; 
 
-    input_bind[i].buffer_type = MYSQL_TYPE_STRING;
-    input_bind[i].buffer = state.message_sent;
-    input_bind[i].buffer_length = sizeof(state.message_sent);
-    input_bind[i++].length = &msg_sent_len;
+//     input_bind[i].buffer_type = MYSQL_TYPE_STRING;
+//     input_bind[i].buffer = state.message_sent;
+//     input_bind[i].buffer_length = sizeof(state.message_sent);
+//     input_bind[i++].length = &msg_sent_len;
 
-    input_bind[i].buffer_type = MYSQL_TYPE_STRING;
-    input_bind[i].buffer = (char*)state_hash;
-    input_bind[i].buffer_length = 65;
-    input_bind[i++].length = &state_hash_len;  
+//     input_bind[i].buffer_type = MYSQL_TYPE_STRING;
+//     input_bind[i].buffer = (char*)state_hash;
+//     input_bind[i].buffer_length = 65;
+//     input_bind[i++].length = &state_hash_len;  
 
-    if (mysql_stmt_bind_param(statement, input_bind)) {
-        fprintf(stderr, "ERROR:mysql_stmt_bind_param failed\n");
-        exit(1);
-    }
+//     if (mysql_stmt_bind_param(statement, input_bind)) {
+//         fprintf(stderr, "ERROR:mysql_stmt_bind_param failed\n");
+//         exit(1);
+//     }
 
-    if (mysql_stmt_execute(statement)) {
-        fprintf(stderr, "mysql_stmt_execute(), failed. Error:%s\n", mysql_stmt_error(statement));
-        exit(1);
-    }
+//     if (mysql_stmt_execute(statement)) {
+//         fprintf(stderr, "mysql_stmt_execute(), failed. Error:%s\n", mysql_stmt_error(statement));
+//         exit(1);
+//     }
 
-    return true;
-}
+//     return true;
+// }
 // #endif
 
 #if defined(HAVE_ECH)
